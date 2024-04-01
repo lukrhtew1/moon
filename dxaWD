@@ -1,0 +1,722 @@
+local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/lukrhtew1/moonclientnewuilib/main/sgsdfg"))()
+
+local localPlayer = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+if game.CoreGui:FindFirstChild("moonclient") then
+	warn("moon client found destroying old adding new")
+
+	game.CoreGui:FindFirstChild("moonclient"):Destroy()
+end
+
+createStructure()
+
+local function createTabs()
+	createTab("Combat")
+	createTab("Player")
+	createTab("Visuals")
+	createTab("Misc")
+end
+
+local Strafe = false
+local StrafeConnection = nil
+local DetectionRadius = 5
+
+local oldLocation = nil
+local RandomMovement = false
+local YLevelStrafe = false
+
+local function createTargetStrafe()
+
+	createScript("Target Strafe", "Combat", function()
+
+		if Strafe == false then
+			Strafe = true
+		else
+			Strafe = false
+			if StrafeConnection ~= nil then
+				StrafeConnection:Disconnect()
+			end
+		end
+
+		local RADIUS = 6.5
+		local ORBIT_TIME = 1.5
+		local ORIGINBITTIME = 1.5
+		local ORIGINRADIUS = 6.5
+		local ECLIPSE = 1
+
+		local pi = math.pi
+		local cos, sin, rad = math.cos, math.sin, math.rad
+		local DeltaTime = 0
+
+		local function TargetStrafe()
+
+			local function CallStrafe()
+				for _, Player in ipairs(game.Players:GetPlayers()) do
+
+					local character = Player.Character
+
+					if character and character.Parent and Player ~= localPlayer then
+						if localPlayer.Team ~= Player.Team then
+
+							if character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+								local rayOrigin = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+								local rayDirection = Vector3.new(0, -100, 0)
+								local raycastParams = RaycastParams.new()
+
+								raycastParams.FilterDescendantsInstances = {localPlayer.Character, character }
+								raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+								local Magnitude = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - character.HumanoidRootPart.Position).Magnitude
+
+								local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+								local randomizedDetectionRadius = DetectionRadius + math.random(5, 6)
+
+								if Magnitude <= randomizedDetectionRadius then
+									if raycastResult then
+										if character.Humanoid.Health > 0 then
+											local PlayerToStrafe = character.HumanoidRootPart
+
+											local targetSpeed = 0
+											local lastPosition = PlayerToStrafe.Position
+
+											wait(0.1)
+
+											local distanceTraveled = (PlayerToStrafe.Position - lastPosition).Magnitude
+											targetSpeed = distanceTraveled / 0.1
+
+											local ORBIT_TIME = ORIGINBITTIME
+											local RADIUS = ORIGINRADIUS
+
+											if targetSpeed > 25 then
+												ORBIT_TIME = 5
+												RADIUS = 5
+											end
+
+											local info = TweenInfo.new(0.6)
+
+											local angle = rad((tick() % ORBIT_TIME) / ORBIT_TIME * 360)
+											local x = RADIUS * cos(angle) * ECLIPSE
+											local z = RADIUS * sin(angle)
+
+											local velocity = Instance.new("BodyVelocity")
+											velocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+											local y_offset = 5
+
+											local strafeFactor = math.random() * 1.0 + 0.95
+											local x_strafe = x * strafeFactor
+											local z_strafe = z * strafeFactor
+
+											local targetDirection = (PlayerToStrafe.Position - localPlayer.Character.HumanoidRootPart.Position).unit
+											localPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(localPlayer.Character.HumanoidRootPart.Position, localPlayer.Character.HumanoidRootPart.Position + targetDirection)
+
+											local info = TweenInfo.new(0.6)
+											local targetDirection = (PlayerToStrafe.Position - localPlayer.Character.HumanoidRootPart.Position).unit
+
+											if RandomMovement == true then
+												local y = 2 * sin(tick() * 2)
+
+												if YLevelStrafe == true then
+													y = 2 * sin(tick() * 2) + y_offset
+												else
+													y = 2 * sin(tick() * 2)
+												end
+											else
+												local velocity = Instance.new("BodyVelocity")
+												velocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+												if YLevelStrafe == true then
+													velocity.Velocity = Vector3.new(x_strafe, 0, z_strafe)
+													local targetPosition = PlayerToStrafe.Position + Vector3.new(x_strafe, y_offset, z_strafe)
+
+													local tween = game.TweenService:Create(localPlayer.Character.HumanoidRootPart, TweenInfo.new(0.4), { CFrame = CFrame.new(targetPosition) })
+													tween:Play()
+												else
+													velocity.Velocity = Vector3.new(x_strafe, 0, z_strafe)
+													local targetPosition = PlayerToStrafe.Position + Vector3.new(x_strafe, 0, z_strafe)
+
+													local tween = game.TweenService:Create(localPlayer.Character.HumanoidRootPart, TweenInfo.new(0.4), {CFrame = CFrame.new(targetPosition)})
+													tween:Play()
+												end
+
+												velocity.Parent = localPlayer.Character.HumanoidRootPart
+												velocity:Destroy()
+											end
+
+
+											velocity.Parent = localPlayer.Character.HumanoidRootPart
+											velocity:Destroy()
+										end
+									else
+										localPlayer.Character.HumanoidRootPart.Anchored = true
+										local info = TweenInfo.new(0.6)
+
+										local Animation = game.TweenService:Create(game.Players.LocalPlayer.Character.HumanoidRootPart, info, { CFrame = oldLocation })
+										Animation:Play()
+
+										task.wait(1)
+										localPlayer.Character.HumanoidRootPart.Anchored = false
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+
+			spawn(function()
+				if Strafe == true then
+					StrafeConnection = game:GetService("RunService").Heartbeat:Connect(function()
+						DeltaTime = game:GetService("RunService").Heartbeat:Wait()
+						CallStrafe()
+					end)
+				end
+			end)
+		end
+
+		TargetStrafe()
+
+	end)
+
+
+	spawn(function()
+		while true do
+			oldLocation = localPlayer.Character.HumanoidRootPart.CFrame
+			task.wait(1.2)
+		end
+	end)
+
+	createSettingToggle("Y Level Strafe", "Combat", "Target Strafe", function()
+		if YLevelStrafe == false then
+			YLevelStrafe = true
+		else
+			YLevelStrafe = false
+		end
+	end)
+
+	createSettingToggle("Random Movement", "Combat", "Target Strafe", function()
+		if RandomMovement == false then
+			RandomMovement = true
+		else
+			RandomMovement = false
+		end
+	end)
+end
+
+local originalArmC0 = nil
+local viewmodelAnimationDebounce = false
+
+function animateViewmodel()
+	if viewmodelAnimationDebounce == false then
+		viewmodelAnimationDebounce = true					
+		local KillAuraAnimation = TweenService:Create(game.Workspace.CurrentCamera.Viewmodel.RightHand.RightWrist, TweenInfo.new(0.1), {C0 = originalArmC0 * CFrame.new(0.69, -0.7, 0.6) * CFrame.Angles(math.rad(-15), math.rad(50), math.rad(-110))})
+		KillAuraAnimation:Play()
+		task.wait(0.2)
+		local KillAuraAnimationOrigin = TweenService:Create(game.Workspace.CurrentCamera.Viewmodel.RightHand.RightWrist, TweenInfo.new(0.4), {C0 = originalArmC0 })
+		KillAuraAnimationOrigin:Play()
+		task.wait(0.03)
+		viewmodelAnimationDebounce = false
+	end
+end
+
+local KillAuraToggled = false
+local KillAuraConnection = nil
+local ActivateAnimation = false
+
+local animationKillAura = "Animation 1"
+
+local function createKillAura()
+
+	createScript("Kill Aura", "Combat", function()
+		if originalArmC0 == nil then
+			originalArmC0 = game.Workspace.CurrentCamera.Viewmodel.RightHand.RightWrist.C0
+		end
+
+		if KillAuraToggled == false then
+			KillAuraToggled = true
+		else
+			KillAuraToggled = false
+
+			if KillAuraConnection ~= nil then
+				KillAuraConnection:Disconnect()
+			end
+		end
+
+		local function KillAura()
+
+			local function CallKillAura()
+
+				pcall(function()
+
+					for _,Player in next, Players:GetChildren() do
+
+						local character = Player.Character
+
+						if character and character.Parent and Player ~= localPlayer then
+
+							if character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+
+								local Magnitude = (localPlayer.Character.HumanoidRootPart.Position - character.HumanoidRootPart.Position).magnitude
+
+								if Magnitude <= 25 then
+									if character.Humanoid.Health > 0 then
+
+										local WeaponEquipped = nil
+
+										for i ,v in pairs(localPlayer.Character:GetChildren()) do
+											if v:IsA("Accessory") then
+												local Split = string.split(v.Name, "_")
+
+												if Split then
+													if Split[2] == "sword" then
+														WeaponEquipped = v.Name
+
+														break
+													end
+												end
+											end
+										end
+
+										if WeaponEquipped == nil then
+											print("Skipped kill aura because no weapon has been equipped")
+										else
+
+											local args = {
+												[1] = {
+													["chargedAttack"] = {
+														["chargeRatio"] = 0
+													},
+													["entityInstance"] = workspace:WaitForChild(character.Name),
+													["validate"] = {
+														["targetPosition"] = {
+															["value"] = workspace:FindFirstChild(character.Name).HumanoidRootPart.Position
+														},
+														["raycast"] = {
+															["cameraPosition"] = {
+																["value"] = Vector3.new(184.80075073242188, 65.73189544677734, 518.7940063476562)
+															},
+															["cursorDirection"] = {
+																["value"] = Vector3.new(-0.22588884830474854, -0.6329710483551025, 0.7404876947402954)
+															}
+														},
+														["selfPosition"] = {
+															["value"] = localPlayer.Character.HumanoidRootPart.Position
+														}
+													},
+													["weapon"] = game:GetService("ReplicatedStorage"):WaitForChild("Inventories"):WaitForChild(localPlayer.Name):WaitForChild(tostring(WeaponEquipped))
+												}
+											}
+
+											game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("node_modules"):WaitForChild("@rbxts"):WaitForChild("net"):WaitForChild("out"):WaitForChild("_NetManaged"):WaitForChild("SwordHit"):FireServer(unpack(args))
+
+											spawn(function()
+												animateViewmodel()
+											end)
+
+										end
+									end
+								end
+							else
+								print("Skipping since character picked doesnt have a root part.")
+							end
+
+						end
+					end
+				end)
+			end
+
+			spawn(function()
+				if KillAuraToggled == true then
+					KillAuraConnection = game:GetService("RunService").Heartbeat:Connect(function()
+						CallKillAura()
+					end)
+				end
+			end)
+		end
+
+		KillAura()
+
+	end)
+
+	createSettingDropdown("Animation", "Combat", "Kill Aura", {"Animation 1", "Animation 2"}, function(arg)
+		animationKillAura = arg
+	end)
+end
+
+local BedBreak = false
+local BedBreakConnection = nil
+local RequiresPickaxe = false
+
+local function createBedDestroyer()
+
+	createScript("Bed Destroyer", "Misc", function()
+		if BedBreak == false then
+			BedBreak = true
+		else
+			BedBreak = false
+
+			if BedBreakConnection ~= nil then
+				BedBreakConnection:Disconnect()
+			end
+
+		end
+
+		local function BedBreakFuntion()
+
+			local function CallBedBreak()
+				-- pcall(function()
+
+				for _,Bed in next, game.Workspace:GetChildren() do
+					if Bed then
+						if Bed.Name == "bed" then
+							if Bed:FindFirstChild("Covers") then
+
+								local Magnitude = (localPlayer.Character.HumanoidRootPart.Position - Bed.Covers.Position).magnitude
+
+								if Magnitude <= 20 then
+
+									local WeaponEquipped = nil
+
+									for i ,v in pairs(localPlayer.Character:GetChildren()) do
+										if v:IsA("Accessory") then
+											local Split = string.split(v.Name, "_")
+
+											if Split then
+												if Split[2] == "pickaxe" then
+													WeaponEquipped = v.Name
+
+													break
+												end
+											end
+										end
+									end
+
+									local rayOrigin = Bed.Position
+									local rayDirection = Vector3.new(10, 3, 0)
+									local raycastParams = RaycastParams.new()
+
+									raycastParams.FilterDescendantsInstances = {Bed}
+									raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+									local function fireRemoteOnBehalf(blockPosition)
+										local args = {
+											[1] = {
+												["blockRef"] = {
+													["blockPosition"] = blockPosition
+												},
+												["hitPosition"] = Vector3.new(0,0,0), --- Doesnt really matter
+												["hitNormal"] = Vector3.new(0,0,0)
+											}
+										}
+
+										local function InvokeServer()
+											return game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("node_modules"):WaitForChild("@easy-games"):WaitForChild("block-engine"):WaitForChild("node_modules"):WaitForChild("@rbxts"):WaitForChild("net"):WaitForChild("out"):WaitForChild("_NetManaged"):WaitForChild("DamageBlock"):InvokeServer(unpack(args))
+										end
+
+										print(InvokeServer())
+									end
+
+									local function commitBedFind()
+
+										local function castRayDirection(origin)
+											if origin == "bed" then
+												local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+												return raycastResult
+											else
+												local raycastResult = workspace:Raycast(origin, rayDirection, raycastParams)
+												return raycastResult
+											end
+										end
+
+										local hitRay = nil
+
+										fireRemoteOnBehalf(Bed:GetAttribute("BlockPosition"))
+
+										for i = 1, 7 do -- finds the top x block
+
+											if hitRay then
+												if i == 7 then
+													if i == 7 then
+														local Split = string.split(hitRay.Instance.Name, "_")
+
+														local function round(n)
+															return math.floor(n + 0.5)
+														end
+
+														-- thanks to xylex for the / 3 help didnt know bedwars was like that fr
+
+														print(Vector3.new(round(hitRay.Position.X / 3), round(hitRay.Position.Y / 3), round(hitRay.Position.Z / 3)))
+														fireRemoteOnBehalf(Vector3.new(round(hitRay.Position.X / 3), round(hitRay.Position.Y / 3), round(hitRay.Position.Z / 3)))
+													end
+												else
+													local raycast = castRayDirection(hitRay.Instance.Position)
+
+													if raycast then
+														hitRay = raycast
+													end
+												end
+											else
+												local raycast = castRayDirection("bed")
+												hitRay = raycast
+											end
+
+											task.wait(0.01)
+										end
+									end
+
+									if RequiresPickaxe then
+										if WeaponEquipped ~= nil then
+											commitBedFind()
+										end
+									else
+										commitBedFind()
+									end
+
+									spawn(function()
+										animateViewmodel()
+									end)
+
+								end
+							end
+						end
+					end
+				end
+			end
+
+			spawn(function()
+				if BedBreak == true then
+					BedBreakConnection = game:GetService("RunService").Heartbeat:Connect(function()
+						CallBedBreak()
+					end)
+				end
+			end)
+		end
+
+		BedBreakFuntion()		
+
+	end)
+
+	createSettingToggle("Requires Pickaxe", "Misc", "Bed Destroyer", function()
+		if RequiresPickaxe == false then
+			RequiresPickaxe = true
+		else
+			RequiresPickaxe = false
+		end
+	end)
+end
+
+local PlayerTP = false
+local PlayerTPConnection = nil
+
+local function CreateclickTP()
+
+	createScript("ClickTP", "Player", function()
+
+		local function findPartUsingMouse()
+			local hitPos = localPlayer:GetMouse().Target
+
+			return hitPos
+		end
+
+		if PlayerTP == false then
+
+			createNotification("Click anywhere to TP!", 5)
+			PlayerTP = true
+
+			local positionTaken = nil
+
+			local mouse = localPlayer:GetMouse()
+
+			mouse.Button1Down:Connect(function()
+				if positionTaken == nil and PlayerTP == true then
+					positionTaken = findPartUsingMouse()
+
+					localPlayer.Character.Humanoid.Health = 0
+
+					createNotification("Found part! initiating TP", 3)
+				end
+			end)
+
+			PlayerTPConnection = localPlayer.CharacterAdded:Connect(function(char)
+				task.wait(0.02)
+
+				local info = nil
+
+				local function TP(part)
+					if (localPlayer.Character.HumanoidRootPart.Position - part.Position).Magnitude > 200 then
+						info = TweenInfo.new(1.2)
+					else
+						info = TweenInfo.new(0.5)
+					end
+				end
+
+				if positionTaken:IsA("BasePart") then
+					TP(positionTaken)
+				else
+					for i , v in pairs(positionTaken.Parent:GetDescendants()) do
+						if v:IsA("BasePart") or v:IsA("UnionOperation") or v:IsA("MeshPart") then
+							TP(v)
+						end
+					end
+				end
+
+				local Animation = game.TweenService:Create(localPlayer.Character.HumanoidRootPart, info, {CFrame = CFrame.new(positionTaken.CFrame.X, positionTaken.CFrame.Y + 5, positionTaken.CFrame.Z)})
+				Animation:Play()
+
+				positionTaken = nil
+				--PlayerTPConnection:Disconnect()
+			end)
+		else
+
+			if PlayerTPConnection ~= nil then
+				PlayerTPConnection:Disconnect()
+			end
+
+			PlayerTP = false
+
+			return
+		end
+
+	end)
+end
+
+local BlockFly = false
+local FlyConnection = nil
+
+local function createBlockFly()
+	createScript("BlockFly", "Player", function()
+
+		if BlockFly == false then
+			BlockFly = true
+
+			createNotification("Place down any block ( wool ) to use this!", 6)
+			createNotification("This is for short distance fly", 3)
+		else
+			BlockFly = false
+		end
+
+		local function findBlock()
+			local playerTeam = localPlayer.Team
+			local teamLowered = string.lower(playerTeam.Name)
+
+			local Block = game.Workspace.Map.Worlds:FindFirstChildWhichIsA("Folder").Blocks["wool_"..teamLowered]
+
+			return Block
+		end
+
+		local ourFlyBlock = nil
+		local runServiceDeb = false
+
+		if BlockFly == true then
+			FlyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+				if ourFlyBlock ~= nil then
+					if not runServiceDeb then
+						if localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+							runServiceDeb = true
+
+							if ourFlyBlock ~= false then
+								ourFlyBlock.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.X, game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.Y - 6, game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.Z)
+								task.wait(0.08)
+								runServiceDeb = false
+								ourFlyBlock.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.X, game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.Y - 5, game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.Z)
+							else
+								ourFlyBlock = findBlock()
+							end
+						end
+					end
+				else
+					ourFlyBlock = findBlock()
+				end
+
+				task.wait(0.01)
+			end)
+		else
+			FlyConnection:Disconnect()
+		end
+
+	end)
+end
+
+local HitboxVisual = false
+local HitboxTeamatesIncluded = false
+local HitboxConnection = nil
+
+local function createHitboxVisual()
+
+	createScript("Hitbox Visuals", "Visuals", function()
+
+		if HitboxVisual == false then
+			HitboxVisual = true
+
+			for i ,v in pairs(Players:GetChildren()) do
+
+				if v and v.Character then
+
+					if HitboxTeamatesIncluded == true and v.Team == localPlayer.Team then
+						return
+					end
+
+					local Character = v.Character
+
+					local function addHitbox(char)
+						local hitboxEsp = Instance.new("Highlight", char)
+						hitboxEsp.Name = "moonclientesp"
+					end
+
+					addHitbox(Character)
+
+					HitboxConnection = v.CharacterAdded:Connect(function(Char)
+						task.wait(1.3)
+						addHitbox(Char)
+					end)
+				end
+			end
+
+		else
+
+			for i ,v in pairs(Players:GetChildren()) do
+				if v and v.Character then
+					local Character = v.Character
+
+					repeat 
+
+						if Character:FindFirstChildWhichIsA("Highlight") then
+							Character:FindFirstChildWhichIsA("Highlight"):Destroy()
+						end
+						task.wait()
+
+					until not Character:FindFirstChildWhichIsA("Highlight")
+				end
+			end
+
+			HitboxVisual = false
+			HitboxConnection:Disconnect()
+		end
+
+	end)
+
+	createSettingToggle("Include Teamates", "Visuals", "Hitbox Visuals", function()
+		if HitboxTeamatesIncluded == false then
+			HitboxTeamatesIncluded = true
+			print(HitboxTeamatesIncluded)
+		else
+			HitboxTeamatesIncluded = false
+			print(HitboxTeamatesIncluded)
+		end
+	end)
+
+end
+
+createTabs()
+
+-- ## Creating the scripts ## --
+
+createTargetStrafe()
+createKillAura()
+createBedDestroyer()
+createHitboxVisual()
+CreateclickTP()
+createBlockFly()
